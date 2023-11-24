@@ -64,5 +64,80 @@ int MainWindow::check_pin_code() {
 }
 int MainWindow::show_account_window() {
     qDebug() << "show_account_window";
+    //Открываем файл на чтение
+    QFile secret_file("C:/Users/Vlad/Desktop/DOSAS/201_331_Donets/encrypt_data.json");
+    secret_file.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    if (!secret_file.isOpen()) {
+        qDebug() << "Ошибка в открытии исходного файла";
+        return 0;
+    }
+
+    //Считываем зашифрованные данные
+    QString secret_data = secret_file.readAll();
+
+    //Расшифровываем данные
+    QString decrypt_data = decrypt_file(secret_data.toUtf8());
     return 0;
+}
+
+QString MainWindow::decrypt_file(QByteArray secret_data) {
+    // Расшифровка
+    QByteArray decrypted_data;  // Общие расшифрованные данные
+
+    // Размер блока для расшифровки
+    const int block_size = 512;
+
+    // Цикл по блокам данных
+    for (int i = 0; i < secret_data.size(); i += block_size) {
+        // Выделение блока данных
+        QByteArray block = secret_data.mid(i, block_size); //берём подстроку от i до block_size
+
+        // Расшифровка блока
+        unsigned char decrypt_number[block_size];
+        int decrypt_len = decrypt((unsigned char*)QByteArray::fromBase64(block).data(), block.length(), key, iv, decrypt_number);
+        decrypt_number[decrypt_len] = '\0';
+
+        // Добавление расшифрованного блока к общим данным
+        decrypted_data.append(QByteArray::fromRawData((const char*)decrypt_number, decrypt_len));
+    }
+
+    // Возвращаем общую строку для расшифрованных данных
+    return decrypted_data;
+}
+
+int MainWindow::decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
+                        unsigned char *iv, unsigned char *decryptext)
+{
+    EVP_CIPHER_CTX *ctx;
+
+    int len;
+
+    int decryptext_len;
+
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        crypt_error();
+
+
+    if(1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv))
+        crypt_error();
+
+
+    if(1 != EVP_DecryptUpdate(ctx, decryptext, &len, ciphertext, ciphertext_len))
+        crypt_error();
+    decryptext_len = len;
+
+
+    if(1 != EVP_DecryptFinal_ex(ctx, decryptext + len, &len))
+        crypt_error();
+    decryptext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return decryptext_len;
+}
+
+int MainWindow::crypt_error(void)
+{
+    return 1;
 }

@@ -2,10 +2,18 @@
 #include "ui_mainwindow.h"
 #include "QPushButton"
 #include "QMessageBox"
-#include <windows.h>
+#include "QByteArray"
+#include "QFile"
+#include "QJsonDocument"
+#include "QJsonObject"
 #include <openssl/evp.h>
 #include "QDebug"
+#include "QByteArray"
+#include "QBuffer"
 #include "QFile"
+#include "QJsonParseError"
+#include "QJsonObject"
+#include "QJsonArray"
 #include "QVBoxLayout"
 #include "QLabel"
 
@@ -62,8 +70,8 @@ int MainWindow::check_pin_code() {
         return 0;
     }
 }
+
 int MainWindow::show_account_window() {
-    qDebug() << "show_account_window";
     //Открываем файл на чтение
     QFile secret_file("C:/Users/Vlad/Desktop/DOSAS/201_331_Donets/encrypt_data.json");
     secret_file.open(QIODevice::ReadOnly | QIODevice::Text);
@@ -78,9 +86,63 @@ int MainWindow::show_account_window() {
 
     //Расшифровываем данные
     QString decrypt_data = decrypt_file(secret_data.toUtf8());
+
+    //Отсикаем лишнии детали
+    QString trimdecrypt_data = decrypt_data.left(decrypt_data.lastIndexOf('}'));
+    trimdecrypt_data[trimdecrypt_data.length() - 1] = '\n';
+    trimdecrypt_data[trimdecrypt_data.length() - 1] = '}';
+
+    qDebug() << "Расшифрованный файл: " + trimdecrypt_data;
+
+                    //Переводим данные в json
+                    QByteArray decrypt_data_byte = trimdecrypt_data.toUtf8();
+    QJsonDocument jsonDocument = QJsonDocument::fromJson(decrypt_data_byte);
+    QJsonObject jsonObject = jsonDocument.object();
+
+
+    for (auto it = jsonObject.begin(); it != jsonObject.end(); ++it) {
+        // Получаем подобъект для каждого аккаунта
+        QJsonObject accountObject = it.value().toObject();
+
+        // Получаем данные
+        QString id = accountObject.value("id").toString();
+        int sum = accountObject.value("sum").toInt();
+        QString date = accountObject.value("date").toString();
+
+        //Создаем временный вектор
+        QVector<QString> current_data {id, QString::number(sum), date};
+
+        //Добавление данные в общий лист
+        vector_of_accounts.push_back(current_data);
+    }
+
+
+    //Отрисовываем текущий аккаунт
+    display_account(counter_account);
+
     return 0;
 }
 
+int MainWindow::display_account(int counter_account)
+{
+    if (counter_account == 0) {
+        this->setStyleSheet("background-color: #aa71e3;");
+    }
+    else if (counter_account == 1) {
+        this->setStyleSheet("background-color: #a6608c;");
+    }
+    else if (counter_account == 2) {
+        this->setStyleSheet("background-color: #95c7b8;");
+    }
+
+    ui->label_account->setText(vector_of_accounts[counter_account][0]);
+    ui->label_sum->setText(vector_of_accounts[counter_account][1]);
+    ui->label_date->setText(vector_of_accounts[counter_account][2]);
+
+
+
+    return 0;
+}
 QString MainWindow::decrypt_file(QByteArray secret_data) {
     // Расшифровка
     QByteArray decrypted_data;  // Общие расшифрованные данные
@@ -105,6 +167,30 @@ QString MainWindow::decrypt_file(QByteArray secret_data) {
     // Возвращаем общую строку для расшифрованных данных
     return decrypted_data;
 }
+
+
+void MainWindow::on_next_btn_clicked()
+{
+
+    counter_account+= 1;
+    if (counter_account == 3) {
+        counter_account = 0;
+    }
+
+    display_account(counter_account);
+
+}
+
+void MainWindow::on_last_btn_clicked()
+{
+    counter_account-= 1;
+    if (counter_account == -1) {
+        counter_account = 2;
+    }
+    display_account(counter_account);
+}
+
+
 
 int MainWindow::decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
                         unsigned char *iv, unsigned char *decryptext)
@@ -137,7 +223,10 @@ int MainWindow::decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned 
     return decryptext_len;
 }
 
+
 int MainWindow::crypt_error(void)
 {
     return 1;
 }
+
+

@@ -31,6 +31,12 @@ public:
     QString decrypt_file(QByteArray secret_data);
 
 
+    //Вектор в котором все банковские счета
+    QVector<QVector<QString>> vector_of_accounts;
+
+    //Номер счета
+    int counter_account = 0;
+
 private slots:
 
 
@@ -39,6 +45,13 @@ private slots:
 
     //Вывод основного окна
     int show_account_window();
+
+    //Функции отрисовки текущего счета
+    int display_account(int counter_account);
+
+    //Нажатие на кнопки
+    void on_next_btn_clicked();
+    void on_last_btn_clicked();
 
 private:
     Ui::MainWindow *ui;
